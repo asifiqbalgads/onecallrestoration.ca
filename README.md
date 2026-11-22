@@ -21,8 +21,11 @@ Publish from the repository root:
    (e.g. `https://<user>.github.io/onecallrestoration.ca/`) because **every asset path is relative** (`./assets/…`, `./css/…`, `./js/…`).
 3. [`.nojekyll`](.nojekyll) is committed so Jekyll processing is skipped.
 
-No npm install, no bundler, no fonts to download locally (Google Fonts loads with a system fallback stack, so the page still
-renders correctly offline).
+No npm install, no bundler, and **no third-party requests at all** — the three typefaces are subset, self-hosted
+WOFF2 files in `assets/fonts/` (with a system fallback stack behind them), so the page renders identically offline or on a
+restricted network.
+
+Optional local check: `python3 -m http.server 8080` → `http://localhost:8080/`.
 
 ---
 
@@ -62,7 +65,9 @@ set. The wordmark in the header is live text so it stays crisp at any zoom. The 
 away from the brand.
 
 **Typography** — `Bricolage Grotesque` (display) + `Public Sans` (body) + `IBM Plex Mono` (technical labels), three families,
-fixed weight set, strong size scale via `clamp()`.
+fixed weight set, strong size scale via `clamp()`. The variable fonts are subset to Latin + punctuation (≈236 kB total,
+OFL-licensed; `assets/fonts/OFL.txt`), declared with `@font-face` + `font-display: swap` and preloaded for the two faces needed
+at first paint.
 
 **Icons** — all hand-drawn inline SVG symbols on a 24px grid with one stroke weight. No emoji, no icon-font, no CDN.
 
@@ -139,8 +144,9 @@ Mobile-first CSS; the layout is authored at 360/390/430 px, then re-composed at 
   `aria-live` form status, visible focus rings on both light and dark surfaces, text contrast ≥ 4.5:1 for body copy
   (gold is only ever used as large text or as fill behind ink).
 * `role="dialog"` + `aria-modal` drawer, `aria-expanded` on menus/FAQ, `aria-roledescription="carousel"` on the reviews.
-* Zero render-blocking scripts (deferred), two requests for CSS/JS, one Google Fonts request with `display=swap`,
-  all images lazy-loaded except the hero (`fetchpriority="high"`), whole page weighs ~3 MB with 26 images and no third-party JS.
+* Zero render-blocking scripts (deferred), one CSS + one JS request, **no third-party requests whatsoever**, all images
+  lazy-loaded except the hero (`fetchpriority="high"`). HTML + CSS + JS = 123 kB uncompressed; the whole repository including
+  every image and font is 3.5 MB.
 
 ---
 
@@ -149,3 +155,36 @@ Mobile-first CSS; the layout is authored at 360/390/430 px, then re-composed at 
 * It is a **homepage only**, by brief — the service, about and contact pages remain on the live WordPress site and are linked to directly.
 * Contact form is intentionally mailto-based (see §6). Wiring it to Formspree/Web3Forms or the existing WordPress form is a one-field change.
 * Some AI-composed photographs contain soft, illegible background signage — inherent to generated imagery; swap in real job photos when the client supplies them.
+
+---
+
+## 10. GitHub Pages — one manual step left
+
+The repository is **Pages-ready** (`index.html` at the root, `.nojekyll` present, all paths relative) and pushed to
+`arena/f2611dee-onecallrestoration-ca`. Pages could **not** be switched on from this integration — `POST /repos/…/pages`
+returned `403 Resource not accessible by integration`, so the last step is manual:
+
+**Settings → Pages → Source: *Deploy from a branch* → `main` (or this branch) → `/ (root)` → Save**, then wait ~1 minute for
+`https://asifiqbalgads.github.io/onecallrestoration.ca/` to build. Nothing else needs to be changed.
+
+---
+
+## 11. QA actually performed
+
+Headless Chromium (viewport-accurate) against a local static server:
+
+| Check | Result |
+| --- | --- |
+| Horizontal overflow at 320 / 360 / 390 / 430 / 768 / 1024 / 1280 / 1440 / 1920 | `scrollWidth == clientWidth` at every width, 0 px |
+| Console errors, page errors | none |
+| Network responses ≥400 | none |
+| Broken or alt-less `<img>` | 0 broken, 0 missing alt |
+| Custom fonts applied | `document.fonts.check()` true for all three families |
+| Sticky header height across widths | 67 px, no layout jump |
+| Mobile drawer (open, services submenu, `Esc`, focus return, body scroll lock) | passes |
+| Services dropdown (hover-open ≥1040 px, close on leave, tap-toggle, `↓` into list) | passes |
+| FAQ accordion (single-open, animated height, `aria-expanded`) | passes |
+| Review carousel (prev/next, dots, `01 / 06` counter, swipe targets) | passes |
+| Quote form (3 fields flagged when empty; valid submit composes a `mailto:` draft; no fake success message) | passes |
+| Mobile action bar (appears past hero, hides over the form/footer, `env(safe-area-inset-bottom)` padding) | passes |
+| Back-to-top / desktop call pill | passes; back-to-top hidden below 1040 px so it can never sit on footer text |
